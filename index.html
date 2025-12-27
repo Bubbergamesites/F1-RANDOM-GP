@@ -1,60 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>F1 Random GP - Fixed Render</title>
+    <title>F1 Random GP - Time Trial Edition</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Arial Black', sans-serif; }
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; text-shadow: 2px 2px #000; pointer-events: none; z-index: 10; display: none; }
         #speedo { position: absolute; bottom: 20px; right: 20px; color: #ff0000; font-size: 40px; font-weight: bold; z-index: 10; display: none; }
-        
-        #minimap-container {
-            position: absolute; top: 20px; right: 20px; width: 200px; height: 200px;
-            background: rgba(0, 0, 0, 0.6); border: 2px solid #ff0000; border-radius: 10px;
-            display: none; z-index: 15;
-        }
+        #minimap-container { position: absolute; top: 20px; right: 20px; width: 200px; height: 200px; background: rgba(0, 0, 0, 0.6); border: 2px solid #ff0000; border-radius: 10px; display: none; z-index: 15; }
         #minimap { width: 100%; height: 100%; }
-
-        #crash-overlay { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(255, 0, 0, 0.4); display: none; pointer-events: none; z-index: 5;
-        }
-        #msg { position: absolute; top: 50%; width: 100%; text-align: center; color: yellow; font-size: 24px; display: none; text-shadow: 2px 2px #000; }
-        
-        #title-screen {
-            position: absolute; width: 100%; height: 100%; 
-            background: linear-gradient(180deg, #111 0%, #333 100%);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white; z-index: 20;
-        }
-        .menu-box {
-            background: rgba(0,0,0,0.8); padding: 30px; border: 4px solid #ff0000; border-radius: 15px; text-align: center;
-        }
+        #crash-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.4); display: none; pointer-events: none; z-index: 5; }
+        #title-screen { position: absolute; width: 100%; height: 100%; background: linear-gradient(180deg, #111 0%, #333 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 20; }
+        .menu-box { background: rgba(0,0,0,0.8); padding: 30px; border: 4px solid #ff0000; border-radius: 15px; text-align: center; }
         h1 { font-size: 50px; margin-bottom: 10px; color: #ff0000; font-style: italic; }
         .customizer { margin: 20px 0; display: flex; gap: 20px; justify-content: center; }
         .color-input { display: flex; flex-direction: column; align-items: center; gap: 5px; }
         input[type="color"] { width: 50px; height: 50px; border: none; cursor: pointer; background: none; }
-        #start-btn {
-            padding: 15px 40px; font-size: 24px; background: #ff0000; color: white; 
-            border: none; cursor: pointer; font-family: 'Arial Black'; transition: 0.2s;
-        }
+        #start-btn { padding: 15px 40px; font-size: 24px; background: #ff0000; color: white; border: none; cursor: pointer; font-family: 'Arial Black'; transition: 0.2s; }
         #start-btn:hover { background: #fff; color: #ff0000; transform: scale(1.1); }
     </style>
 </head>
 <body>
     <div id="title-screen">
         <div class="menu-box">
-            <h1>F1 RANDOM GP</h1>
+            <h1>F1 TIME TRIAL</h1>
             <div class="customizer">
-                <div class="color-input">
-                    <label>BODY</label>
-                    <input type="color" id="colorBody" value="#ff0000">
-                </div>
-                <div class="color-input">
-                    <label>ACCENT</label>
-                    <input type="color" id="colorAccent" value="#ffffff">
-                </div>
+                <div class="color-input"><label>BODY</label><input type="color" id="colorBody" value="#ff0000"></div>
+                <div class="color-input"><label>ACCENT</label><input type="color" id="colorAccent" value="#ffffff"></div>
             </div>
-            <button id="start-btn">GENERATE & START</button>
+            <button id="start-btn">START SESSION</button>
         </div>
     </div>
 
@@ -62,13 +35,8 @@
         <div style="font-size: 32px; font-weight: 900;">LAP: <span id="lap">1</span> / 3</div>
         <div id="time" style="font-size: 24px;">0.00s</div>
     </div>
-
-    <div id="minimap-container">
-        <canvas id="minimap" width="200" height="200"></canvas>
-    </div>
-
+    <div id="minimap-container"><canvas id="minimap" width="200" height="200"></canvas></div>
     <div id="crash-overlay"></div>
-    <div id="msg">CRASH! RECOVERING...</div>
     <div id="speedo"><span id="kmh">0</span> KM/H</div>
     <canvas id="game"></canvas>
 
@@ -77,37 +45,34 @@
         const ctx = canvas.getContext('2d');
         const mCanvas = document.getElementById('minimap');
         const mCtx = mCanvas.getContext('2d');
-        
         const overlay = document.getElementById('crash-overlay');
-        const msg = document.getElementById('msg');
         
-        let width, height;
-        const roadW = 2000;   
-        const segL = 200;     
-        const camD = 0.8;     
-        const drawDistance = 450; 
-        const camH = 1600; 
-        
-        let playerX = 0;      
-        let playerZ = 0;      
-        let speed = 0;
-        let track = [];
-        let mapPoints = []; 
-        let trackLength = 0;
-        let startTime = 0;
-        let lap = 1;
-        let gameState = 'title';
+        let width, height, track = [], mapPoints = [], trackLength = 0, startTime = 0, lap = 1, gameState = 'title';
+        let playerX = 0, playerZ = 0, speed = 0, carBodyColor = "#ff0000", carAccentColor = "#ffffff";
+        const roadW = 2000, segL = 200, camD = 0.8, drawDistance = 450, camH = 1600;
 
-        let carBodyColor = "#ff0000";
-        let carAccentColor = "#ffffff";
+        let audioCtx, oscillator, gainNode;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            oscillator = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(40, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+        }
 
         const keys = {};
         window.onkeydown = e => keys[e.code] = true;
         window.onkeyup = e => keys[e.code] = false;
-
-        function isPressed(codes) { return codes.some(code => keys[code]); }
+        const isPressed = codes => codes.some(code => keys[code]);
 
         document.getElementById('start-btn').onclick = () => {
+            initAudio();
             createTrack();
             carBodyColor = document.getElementById('colorBody').value;
             carAccentColor = document.getElementById('colorAccent').value;
@@ -117,210 +82,121 @@
             document.getElementById('minimap-container').style.display = 'block';
             startTime = Date.now();
             lap = 1; playerZ = 0; playerX = 0; speed = 0;
-            document.getElementById('lap').innerText = lap;
             gameState = 'racing';
         };
 
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-
-        function addTrackSegment(num, curve) {
-            for (let i = 0; i < num; i++) {
-                track.push({
-                    curve: curve,
-                    color: Math.floor(track.length / 3) % 2 ? '#333' : '#383838',
-                    wall: Math.floor(track.length / 3) % 2 ? '#fff' : '#ff0000'
-                });
-            }
-        }
-
         function createTrack() {
             track = [];
-            addTrackSegment(70, 0); // Start
-            while(track.length < 2500) {
-                const type = Math.random();
-                const len = Math.floor(Math.random() * 80) + 40;
-                if (type < 0.3) addTrackSegment(len, 0);
-                else if (type < 0.65) addTrackSegment(len, (Math.random() > 0.5 ? 1.5 : -1.5) * (Math.random() * 2 + 1));
-                else {
-                    const int = (Math.random() > 0.5 ? 3.5 : -3.5);
-                    addTrackSegment(len/2, int); addTrackSegment(len/2, -int);
-                }
+            const addSeg = (n, c) => { for(let i=0; i<n; i++) track.push({curve: c, color: Math.floor(track.length/3)%2?'#333':'#383838', wall: Math.floor(track.length/3)%2?'#fff':'#ff0000'}); };
+            addSeg(100, 0);
+            while(track.length < 2000) {
+                let l = Math.floor(Math.random()*80)+40;
+                addSeg(l, (Math.random()>0.5?1.5:-1.5)*(Math.random()*2+1));
+                addSeg(l, 0);
             }
-            addTrackSegment(100, 0); // Finish
             trackLength = track.length * segL;
-
-            mapPoints = [];
-            let tx = 0, ty = 0, dir = 0;
+            mapPoints = []; let tx=0, ty=0, dir=0;
             for(let i=0; i<track.length; i++) {
                 dir += track[i].curve * 0.015;
-                tx += Math.sin(dir) * 5;
-                ty -= Math.cos(dir) * 5;
+                tx += Math.sin(dir) * 5; ty -= Math.cos(dir) * 5;
                 if(i % 10 === 0) mapPoints.push({x: tx, y: ty});
             }
         }
 
-        function drawMinimap() {
-            mCtx.clearRect(0, 0, 200, 200);
-            if (mapPoints.length === 0) return;
-
-            const minX = Math.min(...mapPoints.map(p => p.x));
-            const maxX = Math.max(...mapPoints.map(p => p.x));
-            const minY = Math.min(...mapPoints.map(p => p.y));
-            const maxY = Math.max(...mapPoints.map(p => p.y));
-            
-            const scale = 150 / Math.max(maxX - minX, maxY - minY);
-            const offsetX = 100 - ((maxX + minX) / 2) * scale;
-            const offsetY = 100 - ((maxY + minY) / 2) * scale;
-
-            mCtx.strokeStyle = "#fff";
-            mCtx.lineWidth = 3;
-            mCtx.beginPath();
-            mapPoints.forEach((p, i) => {
-                const px = p.x * scale + offsetX;
-                const py = p.y * scale + offsetY;
-                if(i === 0) mCtx.moveTo(px, py);
-                else mCtx.lineTo(px, py);
-            });
-            mCtx.stroke();
-
-            const progress = (playerZ / trackLength) * mapPoints.length;
-            const idx = Math.min(Math.floor(progress), mapPoints.length - 1);
-            const pPoint = mapPoints[idx];
-            mCtx.fillStyle = "yellow";
-            mCtx.beginPath();
-            mCtx.arc(pPoint.x * scale + offsetX, pPoint.y * scale + offsetY, 6, 0, Math.PI * 2);
-            mCtx.fill();
-        }
-
-        function project(p, camX, camY, camZ) {
-            p.scale = camD / (p.z - camZ);
-            p.px = (1 + p.scale * (p.x - camX)) * width / 2;
-            p.py = (1 - p.scale * (p.y - camY)) * height / 2;
-            p.pw = p.scale * roadW * width / 2;
+        function drawCar(ctx, x, y, scale, body, accent) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            ctx.fillStyle = "#111"; 
+            ctx.fillRect(-70, -10, 30, 50); ctx.fillRect(40, -10, 30, 50);
+            ctx.fillRect(-60, -70, 20, 35); ctx.fillRect(40, -70, 20, 35);
+            ctx.fillStyle = body; 
+            ctx.fillRect(-40, 0, 80, 30); ctx.fillRect(-15, -80, 30, 80); ctx.fillRect(-80, 5, 160, 10);
+            ctx.fillStyle = accent; 
+            ctx.fillRect(-50, -80, 100, 8); ctx.fillRect(-10, -30, 20, 20);
+            ctx.restore();
         }
 
         function draw() {
-            resize();
-            ctx.fillStyle = "#72c7ec"; ctx.fillRect(0, 0, width, height / 2); // Sky
-            ctx.fillStyle = "#26732a"; ctx.fillRect(0, height / 2, width, height / 2); // Grass
+            width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight;
+            ctx.fillStyle = "#72c7ec"; ctx.fillRect(0, 0, width, height/2);
+            ctx.fillStyle = "#26732a"; ctx.fillRect(0, height/2, width, height/2);
 
             if (gameState === 'racing') {
                 const startPos = Math.floor(playerZ / segL);
-                const currentSeg = track[startPos % track.length];
+                if (isPressed(['KeyW', 'ArrowUp'])) speed += 6;
+                if (isPressed(['KeyS', 'ArrowDown'])) speed -= 10;
+                speed *= 0.99;
+                if (speed < 0) speed = 0; if (speed > 600) speed = 600;
 
-                if (isPressed(['KeyW', 'ArrowUp'])) speed += 12;
-                if (isPressed(['KeyS', 'ArrowDown'])) speed -= 18;
-                speed *= 0.985; 
-                if (speed < 0) speed = 0;
-                if (speed > 1100) speed = 1100; 
-
-                let steerPower = 0.045 * (speed / 500 + 0.2); 
+                let steerPower = 0.035 * (speed / 500 + 0.2);
                 if (isPressed(['KeyA', 'ArrowLeft'])) playerX -= steerPower;
                 if (isPressed(['KeyD', 'ArrowRight'])) playerX += steerPower;
 
-                playerX -= (speed / 28000) * currentSeg.curve;
+                if (Math.abs(playerX) > 0.85) { playerX = (playerX > 0 ? 0.84 : -0.84); speed *= 0.5; overlay.style.display = 'block'; setTimeout(()=>overlay.style.display='none', 100); }
+
+                playerX -= (speed / 28000) * track[startPos % track.length].curve;
                 playerZ += speed;
 
-                if (playerZ >= trackLength) {
-                    playerZ -= trackLength;
-                    lap++;
-                    if (lap > 3) {
-                        alert("Race Finished! Time: " + ((Date.now() - startTime)/1000).toFixed(2) + "s");
+                if (audioCtx) {
+                    let gearPitch = 40 + ((speed % 120) / 2) + (Math.floor(speed / 120) * 10);
+                    oscillator.frequency.setTargetAtTime(gearPitch, audioCtx.currentTime, 0.05);
+                    gainNode.gain.setTargetAtTime(0.08, audioCtx.currentTime, 0.1);
+                }
+
+                if (playerZ >= trackLength) { 
+                    playerZ -= trackLength; 
+                    lap++; 
+                    if (lap > 3) { 
                         gameState = 'title';
-                        document.getElementById('title-screen').style.display = 'flex';
-                        document.getElementById('minimap-container').style.display = 'none';
+                        let finalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+                        alert("SESSION COMPLETE!\nTotal Time: " + finalTime + "s");
+                        location.reload();
                         return;
-                    }
-                    document.getElementById('lap').innerText = lap;
+                    } 
+                    document.getElementById('lap').innerText = lap; 
                 }
 
-                if (Math.abs(playerX) > 0.85) {
-                    speed *= 0.9; overlay.style.display = 'block'; msg.style.display = 'block';
-                } else {
-                    overlay.style.display = 'none'; msg.style.display = 'none';
-                }
-
-                let maxy = height;
-                let x = 0, dx = 0;
+                let maxy = height, x = 0, dx = 0;
                 for (let n = 0; n < drawDistance; n++) {
                     const i = (startPos + n) % track.length;
-                    const curr = track[i];
                     const loop = (startPos + n) >= track.length ? trackLength : 0;
                     const p = { x: x - (playerX * roadW), y: 0, z: (i * segL) + loop };
-                    project(p, 0, camH, playerZ);
-                    x += dx; dx += curr.curve;
-                    curr.projected = p;
+                    p.scale = camD / (p.z - playerZ);
+                    p.px = (1 + p.scale * p.x) * width / 2;
+                    p.py = (1 - p.scale * (0 - camH)) * height / 2;
+                    p.pw = p.scale * roadW * width / 2;
+                    x += dx; dx += track[i].curve; track[i].projected = p;
 
                     if (n > 0) {
-                        const prev = track[(i > 0) ? i - 1 : track.length - 1].projected;
-                        const cp = curr.projected;
+                        const prev = track[(i > 0) ? i-1 : track.length-1].projected, cp = track[i].projected;
                         if (cp.py < maxy && cp.scale > 0) {
-                            // Road
-                            ctx.fillStyle = curr.color;
-                            ctx.beginPath();
-                            ctx.moveTo(prev.px - prev.pw, prev.py);
-                            ctx.lineTo(cp.px - cp.pw, cp.py);
-                            ctx.lineTo(cp.px + cp.pw, cp.py);
-                            ctx.lineTo(prev.px + prev.pw, prev.py);
-                            ctx.fill();
-                            
-                            // Walls
-                            ctx.fillStyle = curr.wall;
-                            const wallH = cp.pw * 0.15;
-                            const pWallH = prev.pw * 0.15;
-                            
-                            // Left
-                            ctx.beginPath();
-                            ctx.moveTo(prev.px - prev.pw, prev.py);
-                            ctx.lineTo(cp.px - cp.pw, cp.py);
-                            ctx.lineTo(cp.px - cp.pw, cp.py - wallH);
-                            ctx.lineTo(prev.px - prev.pw, prev.py - pWallH);
-                            ctx.fill();
-
-                            // Right
-                            ctx.beginPath();
-                            ctx.moveTo(prev.px + prev.pw, prev.py);
-                            ctx.lineTo(cp.px + cp.pw, cp.py);
-                            ctx.lineTo(cp.px + cp.pw, cp.py - wallH);
-                            ctx.lineTo(prev.px + prev.pw, prev.py - pWallH);
-                            ctx.fill();
-                            
+                            ctx.fillStyle = track[i].color; ctx.beginPath(); ctx.moveTo(prev.px-prev.pw, prev.py); ctx.lineTo(cp.px-cp.pw, cp.py); ctx.lineTo(cp.px+cp.pw, cp.py); ctx.lineTo(prev.px+prev.pw, prev.py); ctx.fill();
+                            ctx.fillStyle = track[i].wall; 
+                            ctx.beginPath(); ctx.moveTo(prev.px-prev.pw, prev.py); ctx.lineTo(cp.px-cp.pw, cp.py); ctx.lineTo(cp.px-cp.pw, cp.py - cp.pw*0.15); ctx.lineTo(prev.px-prev.pw, prev.py - prev.pw*0.15); ctx.fill();
+                            ctx.beginPath(); ctx.moveTo(prev.px+prev.pw, prev.py); ctx.lineTo(cp.px+cp.pw, cp.py); ctx.lineTo(cp.px+cp.pw, cp.py - cp.pw*0.15); ctx.lineTo(prev.px+prev.pw, prev.py - prev.pw*0.15); ctx.fill();
                             maxy = cp.py;
                         }
                     }
                 }
                 drawMinimap();
                 document.getElementById('time').innerText = ((Date.now() - startTime) / 1000).toFixed(2) + "s";
-                document.getElementById('kmh').innerText = Math.floor(speed / 3);
-            }
+                document.getElementById('kmh').innerText = Math.floor(speed/2);
+            } else if (gainNode) { gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1); }
 
-            // --- Draw Car Sprite ---
-            ctx.setTransform(1, 0, 0, 1, 0, 0); 
-            const cX = width / 2;
-            const cY = height - 80; 
-            const s = 1.4;
-            
-            ctx.fillStyle = "#111"; // Tires
-            ctx.fillRect(cX - 70*s, cY - 10, 30*s, 50*s);
-            ctx.fillRect(cX + 40*s, cY - 10, 30*s, 50*s);
-            ctx.fillRect(cX - 60*s, cY - 70, 20*s, 35*s);
-            ctx.fillRect(cX + 40*s, cY - 70, 20*s, 35*s);
-
-            ctx.fillStyle = carBodyColor; 
-            ctx.fillRect(cX - 40*s, cY, 80*s, 30*s); // Rear
-            ctx.fillRect(cX - 15*s, cY - 80, 30*s, 80*s); // Nose
-            ctx.fillRect(cX - 80*s, cY + 5, 160*s, 10*s); // Rear Wing
-            
-            ctx.fillStyle = carAccentColor; 
-            ctx.fillRect(cX - 50*s, cY - 80, 100*s, 8*s); // Front Wing
-            ctx.fillRect(cX - 10*s, cY - 30, 20*s, 20*s); // Intake
-            
+            drawCar(ctx, width/2, height-80, 1.4, carBodyColor, carAccentColor);
             requestAnimationFrame(draw);
         }
-        createTrack();
+
+        function drawMinimap() {
+            mCtx.clearRect(0, 0, 200, 200);
+            const scale = 0.05, offX = 100, offY = 100;
+            mCtx.strokeStyle = "#fff"; mCtx.beginPath();
+            mapPoints.forEach((p, i) => { i===0?mCtx.moveTo(p.x*scale+offX, p.y*scale+offY):mCtx.lineTo(p.x*scale+offX, p.y*scale+offY); });
+            mCtx.stroke();
+            const p = mapPoints[Math.min(Math.floor((playerZ/trackLength)*mapPoints.length), mapPoints.length-1)];
+            mCtx.fillStyle = "yellow"; mCtx.beginPath(); mCtx.arc(p.x*scale+offX, p.y*scale+offY, 4, 0, 7); mCtx.fill();
+        }
         draw();
     </script>
 </body>

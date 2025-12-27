@@ -2,40 +2,45 @@
 <html>
 <head>
     <title>F1 Random GP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Arial Black', sans-serif; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Arial Black', sans-serif; touch-action: none; }
         #hud { position: absolute; top: 20px; left: 20px; color: #fff; text-shadow: 2px 2px #000; pointer-events: none; z-index: 10; display: none; }
         #speedo { position: absolute; bottom: 20px; right: 20px; color: #ff0000; font-size: 40px; font-weight: bold; z-index: 10; display: none; }
-        #minimap-container { position: absolute; top: 20px; right: 20px; width: 200px; height: 200px; background: rgba(0, 0, 0, 0.6); border: 2px solid #ff0000; border-radius: 10px; display: none; z-index: 15; }
+        #minimap-container { position: absolute; top: 20px; right: 20px; width: 150px; height: 150px; background: rgba(0, 0, 0, 0.6); border: 2px solid #ff0000; border-radius: 10px; display: none; z-index: 15; }
         #minimap { width: 100%; height: 100%; }
         #crash-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.4); display: none; pointer-events: none; z-index: 5; }
         #title-screen { position: absolute; width: 100%; height: 100%; background: linear-gradient(180deg, #111 0%, #333 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 20; }
-        .menu-box { background: rgba(0,0,0,0.8); padding: 30px; border: 4px solid #ff0000; border-radius: 15px; text-align: center; }
-        h1 { font-size: 50px; margin-bottom: 10px; color: #ff0000; font-style: italic; }
-        .customizer { margin: 20px 0; display: flex; gap: 20px; justify-content: center; }
-        .color-input { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        input[type="color"] { width: 50px; height: 50px; border: none; cursor: pointer; background: none; }
-        #start-btn { padding: 15px 40px; font-size: 24px; background: #ff0000; color: white; border: none; cursor: pointer; font-family: 'Arial Black'; transition: 0.2s; }
-        #start-btn:hover { background: #fff; color: #ff0000; transform: scale(1.1); }
+        .menu-box { background: rgba(0,0,0,0.8); padding: 20px; border: 4px solid #ff0000; border-radius: 15px; text-align: center; max-width: 90%; }
+        h1 { font-size: 40px; margin-bottom: 10px; color: #ff0000; font-style: italic; }
+        .customizer { margin: 15px 0; display: flex; gap: 15px; justify-content: center; }
+        .color-input { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 12px; }
+        input[type="color"] { width: 40px; height: 40px; border: none; cursor: pointer; background: none; }
+        #start-btn { padding: 15px 30px; font-size: 20px; background: #ff0000; color: white; border: none; cursor: pointer; font-family: 'Arial Black'; }
+        .controls-hint { margin-top: 15px; font-size: 12px; color: #aaa; line-height: 1.4; }
     </style>
 </head>
 <body>
     <div id="title-screen">
         <div class="menu-box">
-            <h1>F1 TIME TRIAL</h1>
+            <h1>F1 RANDOM GP</h1>
             <div class="customizer">
-                <div class="color-input"><label>BODY</label><input type="color" id="colorBody" value="#ff0000"></div>
+                <div class="color-input"><label>BODY</label><input type="color" id="colorBody" value="#4254f5"></div>
                 <div class="color-input"><label>ACCENT</label><input type="color" id="colorAccent" value="#ffffff"></div>
             </div>
-            <button id="start-btn">START SESSION</button>
+            <button id="start-btn">START RACE</button>
+            <div class="controls-hint">
+                DESKTOP: Arrows/WASD to Drive<br>
+                MOBILE: Hold to Gas, Swipe Left/Right to Steer
+            </div>
         </div>
     </div>
 
     <div id="hud">
-        <div style="font-size: 32px; font-weight: 900;">LAP: <span id="lap">1</span> / 3</div>
-        <div id="time" style="font-size: 24px;">0.00s</div>
+        <div style="font-size: 24px; font-weight: 900;">LAP: <span id="lap">1</span> / 3</div>
+        <div id="time" style="font-size: 18px;">0.00s</div>
     </div>
-    <div id="minimap-container"><canvas id="minimap" width="200" height="200"></canvas></div>
+    <div id="minimap-container"><canvas id="minimap" width="150" height="150"></canvas></div>
     <div id="crash-overlay"></div>
     <div id="speedo"><span id="kmh">0</span> KM/H</div>
     <canvas id="game"></canvas>
@@ -50,6 +55,12 @@
         let width, height, track = [], mapPoints = [], trackLength = 0, startTime = 0, lap = 1, gameState = 'title';
         let playerX = 0, playerZ = 0, speed = 0, carBodyColor = "#ff0000", carAccentColor = "#ffffff";
         const roadW = 2000, segL = 200, camD = 0.8, drawDistance = 450, camH = 1600;
+
+        // Shared Control States
+        const keys = {};
+        let isTouching = false;
+        let touchStartX = 0;
+        let touchCurrentX = 0;
 
         let audioCtx, oscillator, gainNode;
 
@@ -66,12 +77,29 @@
             oscillator.start();
         }
 
-        const keys = {};
+        // DESKTOP EVENT LISTENERS
         window.onkeydown = e => keys[e.code] = true;
         window.onkeyup = e => keys[e.code] = false;
         const isPressed = codes => codes.some(code => keys[code]);
 
-        document.getElementById('start-btn').onclick = () => {
+        // MOBILE EVENT LISTENERS
+        window.addEventListener('touchstart', e => {
+            if (gameState !== 'racing') return;
+            isTouching = true;
+            touchStartX = e.touches[0].clientX;
+            touchCurrentX = touchStartX;
+        }, { passive: false });
+
+        window.addEventListener('touchmove', e => {
+            if (gameState !== 'racing') return;
+            touchCurrentX = e.touches[0].clientX;
+            e.preventDefault(); 
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => isTouching = false);
+
+        document.getElementById('start-btn').onclick = (e) => {
+            e.stopPropagation();
             initAudio();
             createTrack();
             carBodyColor = document.getElementById('colorBody').value;
@@ -117,47 +145,79 @@
             ctx.restore();
         }
 
+        function update() {
+            if (gameState !== 'racing') return;
+
+            const startPos = Math.floor(playerZ / segL);
+            
+            // Gas & Brake
+            if (isPressed(['KeyW', 'ArrowUp', 'Space']) || isTouching) {
+                speed += 6;
+            } else if (isPressed(['KeyS', 'ArrowDown']) || (!isTouching && speed > 10)) {
+                speed -= 10;
+            }
+            
+            speed *= 0.99;
+            if (speed < 0) speed = 0; if (speed > 600) speed = 600;
+
+            // Steering Power
+            let steerPower = 0.035 * (speed / 500 + 0.2);
+            
+            if (isPressed(['KeyA', 'ArrowLeft'])) {
+                playerX -= steerPower;
+            } else if (isPressed(['KeyD', 'ArrowRight'])) {
+                playerX += steerPower;
+            } else if (isTouching) {
+                let swipeDist = touchCurrentX - touchStartX;
+                if (Math.abs(swipeDist) > 5) {
+                    playerX += (swipeDist / width) * 0.12; 
+                }
+            }
+
+            // Off-road Penalty
+            if (Math.abs(playerX) > 0.85) { 
+                playerX = (playerX > 0 ? 0.84 : -0.84); 
+                speed *= 0.5; 
+                overlay.style.display = 'block'; 
+                setTimeout(()=>overlay.style.display='none', 100); 
+            }
+
+            playerX -= (speed / 28000) * track[startPos % track.length].curve;
+            playerZ += speed;
+
+            // Engine Sound
+            if (audioCtx) {
+                let gearPitch = 40 + ((speed % 120) / 2) + (Math.floor(speed / 120) * 10);
+                oscillator.frequency.setTargetAtTime(gearPitch, audioCtx.currentTime, 0.05);
+                gainNode.gain.setTargetAtTime(isTouching || isPressed(['KeyW']) ? 0.08 : 0.02, audioCtx.currentTime, 0.1);
+            }
+
+            // Lap Logic
+            if (playerZ >= trackLength) { 
+                playerZ -= trackLength; 
+                lap++; 
+                if (lap > 3) { 
+                    gameState = 'title';
+                    alert("SESSION COMPLETE!\nTime: " + ((Date.now() - startTime) / 1000).toFixed(2) + "s");
+                    location.reload();
+                } 
+                document.getElementById('lap').innerText = lap; 
+            }
+        }
+
         function draw() {
-            width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight;
+            width = canvas.width = window.innerWidth; 
+            height = canvas.height = window.innerHeight;
+            
+            update();
+
             ctx.fillStyle = "#72c7ec"; ctx.fillRect(0, 0, width, height/2);
             ctx.fillStyle = "#26732a"; ctx.fillRect(0, height/2, width, height/2);
 
             if (gameState === 'racing') {
                 const startPos = Math.floor(playerZ / segL);
-                if (isPressed(['KeyW', 'ArrowUp'])) speed += 6;
-                if (isPressed(['KeyS', 'ArrowDown'])) speed -= 10;
-                speed *= 0.99;
-                if (speed < 0) speed = 0; if (speed > 600) speed = 600;
-
-                let steerPower = 0.035 * (speed / 500 + 0.2);
-                if (isPressed(['KeyA', 'ArrowLeft'])) playerX -= steerPower;
-                if (isPressed(['KeyD', 'ArrowRight'])) playerX += steerPower;
-
-                if (Math.abs(playerX) > 0.85) { playerX = (playerX > 0 ? 0.84 : -0.84); speed *= 0.5; overlay.style.display = 'block'; setTimeout(()=>overlay.style.display='none', 100); }
-
-                playerX -= (speed / 28000) * track[startPos % track.length].curve;
-                playerZ += speed;
-
-                if (audioCtx) {
-                    let gearPitch = 40 + ((speed % 120) / 2) + (Math.floor(speed / 120) * 10);
-                    oscillator.frequency.setTargetAtTime(gearPitch, audioCtx.currentTime, 0.05);
-                    gainNode.gain.setTargetAtTime(0.08, audioCtx.currentTime, 0.1);
-                }
-
-                if (playerZ >= trackLength) { 
-                    playerZ -= trackLength; 
-                    lap++; 
-                    if (lap > 3) { 
-                        gameState = 'title';
-                        let finalTime = ((Date.now() - startTime) / 1000).toFixed(2);
-                        alert("SESSION COMPLETE!\nTotal Time: " + finalTime + "s");
-                        location.reload();
-                        return;
-                    } 
-                    document.getElementById('lap').innerText = lap; 
-                }
-
                 let maxy = height, x = 0, dx = 0;
+                
                 for (let n = 0; n < drawDistance; n++) {
                     const i = (startPos + n) % track.length;
                     const loop = (startPos + n) >= track.length ? trackLength : 0;
@@ -182,16 +242,16 @@
                 drawMinimap();
                 document.getElementById('time').innerText = ((Date.now() - startTime) / 1000).toFixed(2) + "s";
                 document.getElementById('kmh').innerText = Math.floor(speed/2);
-            } else if (gainNode) { gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1); }
+            }
 
-            drawCar(ctx, width/2, height-80, 1.4, carBodyColor, carAccentColor);
+            drawCar(ctx, width/2, height-80, 1.2, carBodyColor, carAccentColor);
             requestAnimationFrame(draw);
         }
 
         function drawMinimap() {
-            mCtx.clearRect(0, 0, 200, 200);
-            const scale = 0.05, offX = 100, offY = 100;
-            mCtx.strokeStyle = "#fff"; mCtx.beginPath();
+            mCtx.clearRect(0, 0, 150, 150);
+            const scale = 0.035, offX = 75, offY = 75;
+            mCtx.strokeStyle = "#fff"; mCtx.lineWidth = 2; mCtx.beginPath();
             mapPoints.forEach((p, i) => { i===0?mCtx.moveTo(p.x*scale+offX, p.y*scale+offY):mCtx.lineTo(p.x*scale+offX, p.y*scale+offY); });
             mCtx.stroke();
             const p = mapPoints[Math.min(Math.floor((playerZ/trackLength)*mapPoints.length), mapPoints.length-1)];
